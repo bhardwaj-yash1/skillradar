@@ -35,3 +35,9 @@ def test_handles_none_gracefully():
 
 def test_batch_normalization_preserves_order():
     assert normalize_skills(["docker", "pytorch", "torch", "fastapi"]) == ["Docker", "PyTorch", "FastAPI"]
+
+
+def test_normalizes_extended_ai_skill_aliases():
+    assert normalize_skill("postgresql") == "PostgreSQL"
+    assert normalize_skill("pyspark") == "PySpark"
+    assert normalize_skill("fine tuning") == "Fine-Tuning"

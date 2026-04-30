@@ -9,32 +9,41 @@ from collections.abc import Iterable
 from backend.config import Settings
 from backend.core.extraction.function_schemas import job_description_extraction_tool
 from backend.core.llm.client import build_async_llm_client
-from backend.core.extraction.normalizer import infer_category, normalize_skill
+from backend.core.extraction.normalizer import CANONICAL_SKILLS, infer_category, normalize_skill
 from backend.utils.logging_config import get_logger
 
-KNOWN_ALIASES = [
-    "python",
-    "pytorch",
-    "tensorflow",
-    "fastapi",
-    "langchain",
-    "docker",
-    "kubernetes",
-    "sql",
-    "aws",
-    "azure",
-    "gcp",
-    "nlp",
-    "rag",
-    "transformers",
-    "huggingface",
-    "computer vision",
-    "mlops",
-    "scikit learn",
-    "sklearn",
-    "pandas",
-    "numpy",
-]
+KNOWN_ALIASES = sorted(CANONICAL_SKILLS.keys(), key=len, reverse=True)
+OPTIONAL_SKILL_HINTS = (
+    "nice to have",
+    "good to have",
+    "preferred",
+    "plus",
+    "bonus",
+    "exposure to",
+    "familiarity with",
+)
+REQUIRED_SKILL_HINTS = (
+    "must have",
+    "required",
+    "strong experience in",
+    "hands-on experience in",
+    "proficient in",
+    "expertise in",
+    "experience with",
+)
+DOMAIN_HINTS = {
+    "nlp": "natural_language_processing",
+    "language model": "generative_ai",
+    "llm": "generative_ai",
+    "rag": "generative_ai",
+    "computer vision": "computer_vision",
+    "vision": "computer_vision",
+    "recommendation": "recommendation_systems",
+    "recommender": "recommendation_systems",
+    "mlops": "mlops",
+    "data pipeline": "data_engineering",
+    "etl": "data_engineering",
+}
 
 
 class JobDescriptionExtractor:
@@ -85,15 +94,17 @@ class JobDescriptionExtractor:
     def _extract_heuristically(self, raw_text: str) -> dict:
         lowered = raw_text.lower()
         found = []
+        sentences = [segment.strip() for segment in re.split(r"(?<=[.!?])\s+|\n+", lowered) if segment.strip()]
         for alias in KNOWN_ALIASES:
-            if alias in lowered:
+            for match in re.finditer(r"\b" + re.escape(alias) + r"\b", lowered):
                 canonical = normalize_skill(alias)
+                context = next((sentence for sentence in sentences if alias in sentence), lowered)
                 found.append(
                     {
                         "name": canonical,
                         "category": infer_category(canonical),
-                        "is_required": True,
-                        "confidence": 0.8,
+                        "is_required": self._classify_requirement(context),
+                        "confidence": self._heuristic_confidence(alias, context),
                     }
                 )
         normalized = self._normalize_skill_payload(found)
@@ -101,7 +112,7 @@ class JobDescriptionExtractor:
             "skills": normalized,
             "role_category": self._infer_role(raw_text),
             "experience_level": self._infer_experience_level(raw_text),
-            "domain": "ai_ml",
+            "domain": self._infer_domain(raw_text),
         }
 
     def _normalize_skill_payload(self, skills: Iterable[dict]) -> list[dict]:
@@ -116,7 +127,7 @@ class JobDescriptionExtractor:
                     "name": name,
                     "category": skill.get("category") or infer_category(name),
                     "is_required": bool(skill.get("is_required", True)),
-                    "confidence": float(skill.get("confidence", 0.75)),
+                    "confidence": max(0.0, min(1.0, float(skill.get("confidence", 0.75)))),
                 }
             )
             seen.add(name)
@@ -141,3 +152,30 @@ class JobDescriptionExtractor:
         if re.search(r"\b6\+ years|\bsenior\b", lowered):
             return "senior"
         return "mid"
+
+    def _classify_requirement(self, context: str) -> bool:
+        """Infer whether a skill is required or optional from nearby context."""
+        if any(hint in context for hint in OPTIONAL_SKILL_HINTS):
+            return False
+        if any(hint in context for hint in REQUIRED_SKILL_HINTS):
+            return True
+        return True
+
+    def _heuristic_confidence(self, alias: str, context: str) -> float:
+        """Assign a simple heuristic confidence score for fallback extraction."""
+        confidence = 0.78
+        if alias in {"pytorch", "tensorflow", "langchain", "kubernetes", "fastapi"}:
+            confidence += 0.07
+        if any(hint in context for hint in REQUIRED_SKILL_HINTS):
+            confidence += 0.08
+        if any(hint in context for hint in OPTIONAL_SKILL_HINTS):
+            confidence -= 0.08
+        return round(max(0.55, min(0.95, confidence)), 2)
+
+    def _infer_domain(self, raw_text: str) -> str:
+        """Infer a broad market domain from the full job description."""
+        lowered = raw_text.lower()
+        for hint, domain in DOMAIN_HINTS.items():
+            if hint in lowered:
+                return domain
+        return "ai_ml"
