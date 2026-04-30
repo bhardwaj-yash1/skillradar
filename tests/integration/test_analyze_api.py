@@ -26,6 +26,15 @@ def test_generate_roadmap_from_analysis_id(api_client, sample_skill_frequencies)
     response = api_client.post(f"/api/v1/roadmap/{analysis['analysis_id']}?total_weeks=8")
     assert response.status_code == 200
     assert "phases" in response.json()
+    assert response.json()["phases"]
+
+
+def test_role_options_endpoint(api_client, sample_skill_frequencies):
+    response = api_client.get("/api/v1/skills/roles?limit=10")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload
+    assert payload[0]["role_key"] in {"ml_engineer", "llm_engineer", "data_scientist"}
 
 
 def test_subscribe_creates_subscription(api_client, sample_skill_frequencies):

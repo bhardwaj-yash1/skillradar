@@ -20,6 +20,7 @@ SkillRadar helps answer three useful questions:
 
 To support that flow, the app can:
 - seed or scrape job market data
+- simulate a realistic 12-week market snapshot across 10 tracked AI and data roles
 - normalize and aggregate skill demand
 - show trends in a dashboard
 - analyze a resume or pasted skills
@@ -29,6 +30,7 @@ To support that flow, the app can:
 
 - local demo setup is quick
 - market dashboard and skill explorer work
+- recruiters can browse 10 role-specific views instead of a single generic market bucket
 - resume analysis works with uploaded resumes or manual skills
 - roadmap generation works
 - test suite and lint checks pass
@@ -100,6 +102,18 @@ Seed demo data:
 python scripts/seed_sample_data.py --synthetic-only
 ```
 
+That command now loads a **curated 12-week market snapshot** across:
+- AI Engineer
+- ML Engineer
+- LLM Engineer
+- Data Scientist
+- MLOps Engineer
+- Data Engineer
+- Analytics Engineer
+- Computer Vision Engineer
+- NLP Engineer
+- Applied Scientist
+
 Start the backend:
 
 ```bash
@@ -126,9 +140,15 @@ If you run:
 python scripts/seed_sample_data.py --synthetic-only
 ```
 
-then the charts and explorer use **seeded demo data**.
+then the charts and explorer use a **curated role-based market snapshot** built to feel realistic for demos and portfolio review.
 
 If you run the scrape pipeline and aggregation flow, the database can contain **real scraped data** or a mix of real and seeded data, depending on what you have already loaded.
+
+## Public demo note
+
+At this stage, the product is still a `Streamlit + FastAPI` application. That makes it great for a polished portfolio demo, but the easiest public deployment path for this exact version is usually `Streamlit Community Cloud`, `Render`, or a small container host.
+
+The later frontend migration to a dedicated web app is what will make a true `Vercel-first` deployment path more natural.
 
 ## Useful endpoints
 

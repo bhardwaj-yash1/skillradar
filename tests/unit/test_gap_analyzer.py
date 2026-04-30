@@ -59,6 +59,9 @@ def test_summary_counts_are_present():
     result = GapAnalyzer().analyze(
         ["PyTorch", "Docker"],
         [make_row("PyTorch", 45), make_row("Kubernetes", 35, category="tool")],
+        target_role="ml_engineer",
     )
     assert result["summary"]["exact_matches"] >= 1
     assert "critical_gaps" in result["summary"]
+    assert "core_skill_coverage_pct" in result["summary"]
+    assert "category_coverage_pct" in result["summary"]

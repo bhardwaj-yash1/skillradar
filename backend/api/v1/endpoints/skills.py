@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.api.v1.schemas.skills import (
     HeatmapResponse,
     MarketSummaryResponse,
+    RoleMarketOption,
     SkillFrequencyOut,
     SkillTrendPoint,
     SkillTrendResponse,
@@ -23,6 +24,21 @@ from backend.db.models import SkillFrequency
 from backend.dependencies import get_db
 
 router = APIRouter()
+
+
+ROLE_LABELS = {
+    "ai_engineer": "AI Engineer",
+    "ml_engineer": "ML Engineer",
+    "llm_engineer": "LLM Engineer",
+    "data_scientist": "Data Scientist",
+    "mlops_engineer": "MLOps Engineer",
+    "data_engineer": "Data Engineer",
+    "analytics_engineer": "Analytics Engineer",
+    "computer_vision_engineer": "Computer Vision Engineer",
+    "nlp_engineer": "NLP Engineer",
+    "applied_scientist": "Applied Scientist",
+    "all": "All Roles",
+}
 
 
 def _serialize_frequency(row: SkillFrequency) -> SkillFrequencyOut:
@@ -56,6 +72,26 @@ async def top_skills(
         parsed_week = date.fromisoformat(week_start)
     rows = await crud.get_top_skills(db, role_filter, parsed_week, limit)
     return [_serialize_frequency(row) for row in rows]
+
+
+@router.get("/roles", response_model=list[RoleMarketOption])
+async def role_options(
+    limit: int = Query(default=10, ge=1, le=20),
+    db: AsyncSession = Depends(get_db),
+) -> list[RoleMarketOption]:
+    """Return recruiter-friendly role filters ranked by latest demand."""
+    rows = await crud.get_role_market_options(db, limit=limit)
+    return [
+        RoleMarketOption(
+            role_key=item["role_key"],
+            label=ROLE_LABELS.get(item["role_key"], item["role_key"].replace("_", " ").title()),
+            latest_postings=item["latest_postings"],
+            week_over_week_change_pct=item["week_over_week_change_pct"],
+            top_skill=item["top_skill"],
+            latest_week=item["latest_week"],
+        )
+        for item in rows
+    ]
 
 
 @router.get("/trend/{skill_name}", response_model=SkillTrendResponse)

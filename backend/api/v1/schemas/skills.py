@@ -68,3 +68,14 @@ class TrendingSkillsResponse(BaseModel):
 
     rising: list[SkillVelocityOut]
     falling: list[SkillVelocityOut]
+
+
+class RoleMarketOption(BaseModel):
+    """One recruiter-facing role option for the dashboard and analyzer."""
+
+    role_key: str
+    label: str
+    latest_postings: int
+    week_over_week_change_pct: float
+    top_skill: str | None
+    latest_week: str

@@ -32,6 +32,8 @@ class AnalysisSummary(BaseModel):
     exact_matches: int
     adjacent_matches: int
     critical_gaps: int
+    core_skill_coverage_pct: float
+    category_coverage_pct: float
 
 
 class ResumeAnalysisResponse(BaseModel):

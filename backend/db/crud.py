@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -141,6 +141,12 @@ async def get_top_skills(
     return list(result.scalars().all())
 
 
+async def get_latest_week(db: AsyncSession) -> date | None:
+    """Return the latest aggregated week available in skill frequencies."""
+    result = await db.execute(select(SkillFrequency.week_start).order_by(SkillFrequency.week_start.desc()))
+    return result.scalars().first()
+
+
 async def get_skill_trend(
     db: AsyncSession,
     skill_name: str,
@@ -151,10 +157,10 @@ async def get_skill_trend(
     result = await db.execute(
         select(SkillFrequency)
         .where(SkillFrequency.skill_name == skill_name, SkillFrequency.role_filter == role_filter)
-        .order_by(SkillFrequency.week_start.asc())
+        .order_by(SkillFrequency.week_start.desc())
         .limit(weeks)
     )
-    return list(result.scalars().all())
+    return list(reversed(result.scalars().all()))
 
 
 async def _compute_velocity_rows(db: AsyncSession, role_filter: str) -> list[dict]:
@@ -200,6 +206,45 @@ async def get_declining_skills(db: AsyncSession, role_filter: str, limit: int = 
     """Return the fastest falling skills."""
     rows = await _compute_velocity_rows(db, role_filter)
     return sorted(rows, key=lambda row: row["velocity"])[:limit]
+
+
+async def get_role_market_options(db: AsyncSession, limit: int = 10) -> list[dict]:
+    """Return the most active role filters with simple growth metadata."""
+    result = await db.execute(
+        select(SkillFrequency.role_filter, SkillFrequency.week_start, func.max(SkillFrequency.total_postings))
+        .where(SkillFrequency.role_filter != "all")
+        .group_by(SkillFrequency.role_filter, SkillFrequency.week_start)
+        .order_by(SkillFrequency.role_filter.asc(), SkillFrequency.week_start.asc())
+    )
+    grouped: dict[str, list[tuple[date, int]]] = defaultdict(list)
+    for role_filter, week_start, total_postings in result.all():
+        grouped[str(role_filter)].append((week_start, int(total_postings)))
+
+    latest_week = await get_latest_week(db)
+    if latest_week is None:
+        return []
+
+    rows: list[dict] = []
+    for role_filter, points in grouped.items():
+        latest_points = [item for item in points if item[0] == latest_week]
+        if not latest_points:
+            continue
+        latest_postings = latest_points[-1][1]
+        previous_postings = points[-2][1] if len(points) >= 2 else latest_postings
+        wow_change_pct = round(((latest_postings - previous_postings) / max(previous_postings, 1)) * 100, 2)
+
+        top_skill_rows = await get_top_skills(db, role_filter, latest_week, limit=1)
+        rows.append(
+            {
+                "role_key": role_filter,
+                "latest_postings": latest_postings,
+                "week_over_week_change_pct": wow_change_pct,
+                "top_skill": top_skill_rows[0].skill_name if top_skill_rows else None,
+                "latest_week": latest_week.isoformat(),
+            }
+        )
+
+    return sorted(rows, key=lambda item: item["latest_postings"], reverse=True)[:limit]
 
 
 async def create_subscription(
@@ -261,6 +306,12 @@ async def create_resume_analysis(db: AsyncSession, data: dict) -> ResumeAnalysis
     await db.commit()
     await db.refresh(analysis)
     return analysis
+
+
+async def clear_skill_frequencies(db: AsyncSession) -> None:
+    """Delete all skill frequency snapshots."""
+    await db.execute(delete(SkillFrequency))
+    await db.commit()
 
 
 async def get_analysis_by_session(db: AsyncSession, session_id: str) -> list[ResumeAnalysis]:

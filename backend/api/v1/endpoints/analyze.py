@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.v1.schemas.analyze import ManualSkillsAnalysisRequest, ResumeAnalysisResponse
@@ -33,6 +32,18 @@ def _serialize_analysis(analysis: ResumeAnalysis) -> ResumeAnalysisResponse:
     )
 
 
+async def _load_market_snapshot(db: AsyncSession, target_role: str) -> list[SkillFrequency]:
+    """Load the latest role-specific benchmark, falling back to all roles when needed."""
+    latest_week = await crud.get_latest_week(db)
+    if latest_week is None:
+        return []
+
+    rows = await crud.get_top_skills(db, target_role, latest_week, limit=18)
+    if rows:
+        return rows
+    return await crud.get_top_skills(db, "all", latest_week, limit=18)
+
+
 @router.post("/resume", response_model=ResumeAnalysisResponse)
 async def analyze_resume(
     session_id: str = Form(...),
@@ -49,10 +60,8 @@ async def analyze_resume(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    rows = (
-        await db.execute(select(SkillFrequency).where(SkillFrequency.role_filter == "all"))
-    ).scalars().all()
-    gap_result = GapAnalyzer().analyze(parsed["skills"], list(rows))
+    rows = await _load_market_snapshot(db, target_role)
+    gap_result = GapAnalyzer().analyze(parsed["skills"], list(rows), target_role=target_role)
     analysis = await crud.create_resume_analysis(
         db,
         {
@@ -73,10 +82,8 @@ async def analyze_skills(
     db: AsyncSession = Depends(get_db),
 ) -> ResumeAnalysisResponse:
     """Analyze manually provided skills."""
-    rows = (
-        await db.execute(select(SkillFrequency).where(SkillFrequency.role_filter == "all"))
-    ).scalars().all()
-    gap_result = GapAnalyzer().analyze(payload.skills, list(rows))
+    rows = await _load_market_snapshot(db, payload.target_role)
+    gap_result = GapAnalyzer().analyze(payload.skills, list(rows), target_role=payload.target_role)
     analysis = await crud.create_resume_analysis(
         db,
         {

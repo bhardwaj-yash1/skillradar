@@ -37,21 +37,31 @@ async def sample_skill_frequencies(test_db):
     """Insert sample weekly trend data."""
     start = date.today() - timedelta(weeks=9)
     for week in range(10):
-        for skill_name, category, freq in [
-            ("PyTorch", "framework", 50 + week),
-            ("TensorFlow", "framework", 60 - week),
-            ("LangChain", "framework", 20 + (week * 3)),
-            ("Docker", "tool", 45),
-            ("FastAPI", "framework", 40 + (week // 2)),
-        ]:
+        weekly_rows = [
+            ("PyTorch", "framework", "ml_engineer", 50 + week, 140),
+            ("Docker", "tool", "ml_engineer", 45 + (week // 2), 140),
+            ("Python", "language", "ml_engineer", 65, 140),
+            ("MLflow", "tool", "ml_engineer", 28 + week, 140),
+            ("LangChain", "framework", "llm_engineer", 40 + week, 120),
+            ("Large Language Models", "concept", "llm_engineer", 55 + week, 120),
+            ("Prompt Engineering", "concept", "llm_engineer", 49 + week, 120),
+            ("SQL", "language", "data_scientist", 64, 130),
+            ("Pandas", "framework", "data_scientist", 58, 130),
+            ("PyTorch", "framework", "all", 46 + week, 390),
+            ("Docker", "tool", "all", 43, 390),
+            ("Python", "language", "all", 70, 390),
+            ("LangChain", "framework", "all", 31 + week, 390),
+            ("MLflow", "tool", "all", 22 + week, 390),
+        ]
+        for skill_name, category, role_filter, freq, total_postings in weekly_rows:
             test_db.add(
                 SkillFrequency(
                     skill_name=skill_name,
                     category=category,
-                    role_filter="all",
+                    role_filter=role_filter,
                     week_start=start + timedelta(weeks=week),
-                    count=freq,
-                    total_postings=100,
+                    count=int((freq / 100) * total_postings),
+                    total_postings=total_postings,
                     frequency_pct=float(freq),
                     yoy_change_pct=None,
                 )

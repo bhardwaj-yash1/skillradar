@@ -27,6 +27,7 @@ async def generate_roadmap(
         analysis_id=analysis.id,
         target_role=analysis.target_role,
         gaps=analysis.gap_analysis.get("gaps", []),
+        strengths=analysis.gap_analysis.get("strengths", []),
         total_weeks=total_weeks,
     )
     analysis.roadmap = roadmap

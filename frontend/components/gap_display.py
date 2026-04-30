@@ -31,11 +31,12 @@ def render_gap_gauge(score: float, label: str) -> go.Figure:
 
 
 def render_gap_scatter(strengths: list[dict], gaps: list[dict]) -> go.Figure:
-    """Render the gap quadrant chart."""
+    """Render the skill coverage chart."""
     rows = strengths + gaps
     frame = pd.DataFrame(rows)
     if frame.empty:
         return go.Figure()
+
     colors = {
         "STRONG": "#15803d",
         "PRESENT": "#65a30d",
@@ -52,18 +53,22 @@ def render_gap_scatter(strengths: list[dict], gaps: list[dict]) -> go.Figure:
                 mode="markers+text",
                 text=subset["skill_name"],
                 textposition="top center",
-                name=status,
+                name=status.replace("_", " ").title(),
                 marker=dict(size=14, color=colors.get(status, "#64748b")),
+                hovertemplate=(
+                    "%{text}<br>Demand share: %{x:.1f}%<br>Evidence strength: %{y:.2f}<extra></extra>"
+                ),
             )
         )
     fig.add_vline(x=30, line_dash="dash", line_color="#94a3b8")
     fig.add_hline(y=0.75, line_dash="dash", line_color="#94a3b8")
     fig.update_layout(
-        title="Skill Gap Quadrant",
-        xaxis_title="Market Frequency %",
-        yaxis_title="Similarity Score",
+        title="Role Benchmark Coverage",
+        xaxis_title="Role demand share (%)",
+        yaxis_title="Evidence strength",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=20, r=20, t=60, b=20),
     )
     return fig
 
@@ -72,14 +77,16 @@ def render_skill_lists(strengths: list[dict], gaps: list[dict]) -> None:
     """Render strengths and gaps side by side."""
     left, right = st.columns(2)
     with left:
-        st.subheader("Your Strengths")
+        st.subheader("What You Already Signal Well")
         for item in strengths:
             st.markdown(
-                f"- **{item['skill_name']}** · {item['status']} · {item['market_frequency_pct']:.1f}% market demand"
+                f"- **{item['skill_name']}** | {item['status'].replace('_', ' ').title()} | {item['market_frequency_pct']:.1f}% demand"
             )
             st.caption(item["reason"])
     with right:
-        st.subheader("Skills To Learn")
+        st.subheader("What Recruiters Still Expect")
         for item in gaps:
-            st.markdown(f"- **{item['skill_name']}** · {item['status']} · {item['market_frequency_pct']:.1f}%")
+            st.markdown(
+                f"- **{item['skill_name']}** | {item['status'].replace('_', ' ').title()} | {item['market_frequency_pct']:.1f}% demand"
+            )
             st.caption(item["reason"])
