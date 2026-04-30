@@ -24,6 +24,16 @@ class SkillGapItem(BaseModel):
     reason: str
 
 
+class AnalysisSummary(BaseModel):
+    """Small summary block for gap analysis quality."""
+
+    resume_skill_count: int
+    market_skill_count: int
+    exact_matches: int
+    adjacent_matches: int
+    critical_gaps: int
+
+
 class ResumeAnalysisResponse(BaseModel):
     """Stored resume analysis payload."""
 
@@ -34,5 +44,6 @@ class ResumeAnalysisResponse(BaseModel):
     extracted_skills: list[str]
     gap_score: float
     fit_label: str
+    summary: AnalysisSummary
     strengths: list[SkillGapItem]
     gaps: list[SkillGapItem]

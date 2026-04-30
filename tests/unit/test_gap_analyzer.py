@@ -48,3 +48,17 @@ def test_gap_score_range():
 
 def test_cosine_similarity_computation():
     assert GapAnalyzer().similarity("PyTorch", "PyTorch") == 1.0
+
+
+def test_adjacent_skill_classification():
+    result = GapAnalyzer().analyze(["Docker"], [make_row("Kubernetes", 45, category="tool")])
+    assert result["strengths"][0]["status"] == "ADJACENT"
+
+
+def test_summary_counts_are_present():
+    result = GapAnalyzer().analyze(
+        ["PyTorch", "Docker"],
+        [make_row("PyTorch", 45), make_row("Kubernetes", 35, category="tool")],
+    )
+    assert result["summary"]["exact_matches"] >= 1
+    assert "critical_gaps" in result["summary"]

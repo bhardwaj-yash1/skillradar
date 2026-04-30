@@ -27,6 +27,7 @@ def _serialize_analysis(analysis: ResumeAnalysis) -> ResumeAnalysisResponse:
         extracted_skills=analysis.extracted_skills,
         gap_score=gap_payload["gap_score"],
         fit_label=gap_payload["fit_label"],
+        summary=gap_payload["summary"],
         strengths=gap_payload["strengths"],
         gaps=gap_payload["gaps"],
     )

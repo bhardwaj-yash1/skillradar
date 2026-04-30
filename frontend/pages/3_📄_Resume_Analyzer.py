@@ -65,6 +65,12 @@ if gap_result:
         f"Analysis ready for {humanize_role(gap_result['target_role'])}. "
         f"Detected {len(gap_result['extracted_skills'])} normalized skills."
     )
+    summary = gap_result["summary"]
+    summary_cards = st.columns(4)
+    summary_cards[0].metric("Fit score", f"{gap_result['gap_score']:.0f}/100")
+    summary_cards[1].metric("Exact matches", summary["exact_matches"])
+    summary_cards[2].metric("Adjacent matches", summary["adjacent_matches"])
+    summary_cards[3].metric("Critical gaps", summary["critical_gaps"])
     st.plotly_chart(render_gap_gauge(gap_result["gap_score"], gap_result["fit_label"]), use_container_width=True)
     render_skill_lists(gap_result["strengths"], gap_result["gaps"])
     st.plotly_chart(

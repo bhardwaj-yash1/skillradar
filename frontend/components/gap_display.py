@@ -36,7 +36,13 @@ def render_gap_scatter(strengths: list[dict], gaps: list[dict]) -> go.Figure:
     frame = pd.DataFrame(rows)
     if frame.empty:
         return go.Figure()
-    colors = {"STRONG": "#15803d", "PRESENT": "#65a30d", "CRITICAL_GAP": "#dc2626", "RECOMMENDED_GAP": "#f59e0b"}
+    colors = {
+        "STRONG": "#15803d",
+        "PRESENT": "#65a30d",
+        "ADJACENT": "#0f766e",
+        "CRITICAL_GAP": "#dc2626",
+        "RECOMMENDED_GAP": "#f59e0b",
+    }
     fig = go.Figure()
     for status, subset in frame.groupby("status"):
         fig.add_trace(
@@ -68,8 +74,12 @@ def render_skill_lists(strengths: list[dict], gaps: list[dict]) -> None:
     with left:
         st.subheader("Your Strengths")
         for item in strengths:
-            st.markdown(f"- **{item['skill_name']}** · {item['market_frequency_pct']:.1f}% market demand")
+            st.markdown(
+                f"- **{item['skill_name']}** · {item['status']} · {item['market_frequency_pct']:.1f}% market demand"
+            )
+            st.caption(item["reason"])
     with right:
         st.subheader("Skills To Learn")
         for item in gaps:
             st.markdown(f"- **{item['skill_name']}** · {item['status']} · {item['market_frequency_pct']:.1f}%")
+            st.caption(item["reason"])
