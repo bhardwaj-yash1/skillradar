@@ -8,9 +8,11 @@ import streamlit as st
 
 from components.skill_heatmap import render_skill_heatmap
 from utils.api_client import api_client
+from utils.ui import infer_data_mode, humanize_role
 
 st.set_page_config(page_title="Market Dashboard", page_icon="📊", layout="wide")
 st.title("Market Dashboard")
+st.caption("Monitor which skills are steady, accelerating, or fading across the current market dataset.")
 
 role_filter = st.selectbox("Role filter", ["all"], index=0)
 
@@ -19,9 +21,15 @@ try:
     top_skills = api_client.get("/skills/top", params={"role_filter": role_filter, "limit": 20})
     trending = api_client.get("/skills/trending", params={"role_filter": role_filter})
     heatmap = api_client.get("/skills/heatmap", params={"role_filter": role_filter})
+    scrape_status = api_client.get("/scrape/status")
 except Exception as exc:
     st.error(f"Backend unavailable: {exc}")
     st.stop()
+
+data_mode, data_message = infer_data_mode(scrape_status.get("posting_counts", {}))
+left_banner, right_banner = st.columns([1.2, 2.2])
+left_banner.info(f"Dataset: {data_mode}")
+right_banner.caption(data_message)
 
 metric_cols = st.columns(5)
 metric_cols[0].metric("Total postings", summary["total_postings"])
@@ -29,6 +37,8 @@ metric_cols[1].metric("Unique skills", summary["unique_skills"])
 metric_cols[2].metric("Top skill", summary["top_skill"] or "N/A")
 metric_cols[3].metric("Fastest rising", summary["fastest_rising"] or "N/A")
 metric_cols[4].metric("Data freshness", summary["data_freshness_week"] or "N/A")
+
+st.caption(f"Viewing: {humanize_role(role_filter)}")
 
 row1_left, row1_right = st.columns(2)
 top_frame = pd.DataFrame(top_skills)

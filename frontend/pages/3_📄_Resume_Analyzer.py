@@ -8,18 +8,27 @@ import streamlit as st
 
 from components.gap_display import render_gap_gauge, render_gap_scatter, render_skill_lists
 from utils.api_client import api_client
+from utils.ui import humanize_role
 
 st.set_page_config(page_title="Resume Analyzer", page_icon="📄", layout="wide")
 st.title("Resume Analyzer")
+st.caption("Compare your current profile against the market and see what to strengthen next.")
 
 session_id = st.session_state.setdefault("session_id", str(uuid.uuid4()))
 tab_upload, tab_manual = st.tabs(["Upload Resume", "Enter Skills Manually"])
+role_options = ["ml_engineer", "llm_engineer", "data_scientist"]
 
 analysis = None
 
 with tab_upload:
     uploaded = st.file_uploader("Upload your resume", type=["pdf", "docx"])
-    upload_role = st.selectbox("Target role", ["ml_engineer", "llm_engineer", "data_scientist"], key="upload_role")
+    upload_role = st.selectbox(
+        "Target role",
+        role_options,
+        key="upload_role",
+        format_func=humanize_role,
+    )
+    st.caption("Best for testing the end-to-end resume parsing flow.")
     if st.button("Analyze Resume", use_container_width=True) and uploaded is not None:
         analysis = api_client.post(
             "/analyze/resume",
@@ -29,9 +38,18 @@ with tab_upload:
 
 with tab_manual:
     manual_skills = st.text_area("Enter your skills", placeholder="Python, PyTorch, Docker")
-    manual_role = st.selectbox("Target role", ["ml_engineer", "llm_engineer", "data_scientist"], key="manual_role")
+    manual_role = st.selectbox(
+        "Target role",
+        role_options,
+        key="manual_role",
+        format_func=humanize_role,
+    )
+    st.caption("Fastest demo flow if you want to test the analysis without uploading a file.")
     if st.button("Analyze Skills", use_container_width=True):
         skills = [item.strip() for item in manual_skills.replace("\n", ",").split(",") if item.strip()]
+        if not skills:
+            st.warning("Add at least one skill before running manual analysis.")
+            st.stop()
         analysis = api_client.post(
             "/analyze/skills",
             json={"session_id": session_id, "target_role": manual_role, "skills": skills},
@@ -43,6 +61,10 @@ if analysis:
 
 gap_result = st.session_state.get("gap_result")
 if gap_result:
+    st.success(
+        f"Analysis ready for {humanize_role(gap_result['target_role'])}. "
+        f"Detected {len(gap_result['extracted_skills'])} normalized skills."
+    )
     st.plotly_chart(render_gap_gauge(gap_result["gap_score"], gap_result["fit_label"]), use_container_width=True)
     render_skill_lists(gap_result["strengths"], gap_result["gaps"])
     st.plotly_chart(
