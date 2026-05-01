@@ -1,4 +1,5 @@
 import "./globals.css";
+export const dynamic = 'force-dynamic';
 import { AppShell } from "@/components/app-shell";
 
 export const metadata = {
