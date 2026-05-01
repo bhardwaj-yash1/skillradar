@@ -199,7 +199,7 @@ st.markdown(
         </div>
         <div class="mini-panel">
           <h3>Best Starting Flow</h3>
-          <p>Open <strong>Market Dashboard</strong>, inspect the top skills, then move to <strong>Resume Analyzer</strong> to measure your fit and generate a plan.</p>
+          <p>Start with <strong>Resume Analyzer</strong> to see your fit score first, then open <strong>Market Dashboard</strong> and <strong>Skill Explorer</strong> to understand the market behind that result.</p>
         </div>
       </div>
     </section>
@@ -230,8 +230,8 @@ for column, (label, value, detail) in zip(columns, cards, strict=True):
 st.markdown(
     """
     <div class="next-step">
-      Use the sidebar to explore the market dashboard, inspect individual skill movement,
-      analyze your resume, and generate a learning roadmap that matches current hiring demand.
+      Use the sidebar to start with Resume Analyzer, inspect the market benchmark behind your score,
+      and generate a learning roadmap that matches current hiring demand.
     </div>
     """,
     unsafe_allow_html=True,

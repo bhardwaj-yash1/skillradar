@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -33,6 +35,7 @@ if not roadmap["phases"]:
     st.stop()
 
 timeline_rows = []
+timeline_anchor = date.today()
 for phase in roadmap["phases"]:
     start_week = int(phase["week_range"].split()[1].split("-")[0])
     end_week = int(phase["week_range"].split("-")[-1])
@@ -40,10 +43,11 @@ for phase in roadmap["phases"]:
         timeline_rows.append(
             {
                 "Skill": skill["skill_name"],
-                "Start": start_week,
-                "Finish": end_week,
+                "Start": timeline_anchor + timedelta(weeks=max(0, start_week - 1)),
+                "Finish": timeline_anchor + timedelta(weeks=end_week),
                 "Category": skill["category"],
                 "Phase": phase["phase_title"],
+                "Window": phase["week_range"],
             }
         )
 
@@ -56,8 +60,9 @@ if not frame.empty:
         y="Skill",
         color="Phase",
         title="Execution Timeline",
-        hover_data={"Category": True, "Start": True, "Finish": True},
+        hover_data={"Category": True, "Window": True, "Start": "|%b %d", "Finish": "|%b %d"},
     )
+    fig.update_xaxes(title_text="Timeline")
     fig.update_layout(margin=dict(l=20, r=20, t=60, b=20))
     st.plotly_chart(fig, use_container_width=True)
 

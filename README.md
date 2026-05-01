@@ -10,6 +10,8 @@ This repository is the **baseline MVP** version of the project. It currently use
 - `SQLite` for the easiest local demo setup
 - `Groq` or `OpenRouter` for LLM-backed extraction flows
 
+This repository now also includes a new `web/` folder with a `Next.js` frontend scaffold for the professional webapp migration and Vercel deployment path.
+
 ## What the app does
 
 SkillRadar helps answer three useful questions:
@@ -132,6 +134,28 @@ Open:
 - `http://127.0.0.1:8000/docs`
 - `http://localhost:8501`
 
+## New web frontend
+
+If you want the more professional webapp version, use the new `web/` frontend:
+
+```bash
+cd C:\Users\yashh\Skillradar\web
+copy .env.local.example .env.local
+npm install
+npm run dev
+```
+
+By default it expects:
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+Then open:
+- `http://localhost:3000`
+
+This new frontend is the recommended path for a Vercel-hosted recruiter demo. The backend should still be hosted separately.
+
 ## Demo data vs real data
 
 If you run:
@@ -146,9 +170,13 @@ If you run the scrape pipeline and aggregation flow, the database can contain **
 
 ## Public demo note
 
-At this stage, the product is still a `Streamlit + FastAPI` application. That makes it great for a polished portfolio demo, but the easiest public deployment path for this exact version is usually `Streamlit Community Cloud`, `Render`, or a small container host.
+At this stage, the product has two frontend paths:
+- `frontend/` for the current Streamlit MVP
+- `web/` for the newer `Next.js` frontend that is better suited for Vercel
 
-The later frontend migration to a dedicated web app is what will make a true `Vercel-first` deployment path more natural.
+Recommended public deployment split:
+- `web/` on Vercel
+- `backend/` on Render, Railway, or another container host
 
 ## Useful endpoints
 
