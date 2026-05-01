@@ -40,7 +40,6 @@ COPY requirements.txt .
 RUN python -m pip install --upgrade pip
 RUN pip install --user --no-cache-dir -r requirements.txt
 RUN python -m playwright install chromium
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 FROM python:3.11-slim
 
@@ -96,6 +95,5 @@ RUN chmod +x /app/docker-entrypoint.sh && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000
-HEALTHCHECK CMD curl -f http://localhost:8000/health || exit 1
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
