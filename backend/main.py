@@ -1,5 +1,13 @@
 """FastAPI application entry point."""
+from fastapi.middleware.cors import CORSMiddleware
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # later restrict to your Vercel domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
