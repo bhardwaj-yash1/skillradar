@@ -24,7 +24,7 @@ tenacity==8.3.0
 
 # Document parsing
 pdfminer.six==20251230
-python-docx==1.1.2
+python-docx==1.2.0
 unstructured[pdf,docx]==0.22.26
 
 # Database
