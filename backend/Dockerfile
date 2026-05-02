@@ -78,10 +78,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /root/.local /root/.local
 COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
 ENV PATH=/root/.local/bin:$PATH
+ENV PYTHONPATH="/root/.local/lib/python3.11/site-packages:$PYTHONPATH"
 
 RUN adduser --disabled-password --gecos "" appuser \
     && mkdir -p /app/data/uploads \
-    && chown -R appuser:appuser /app
+    && chown -R appuser:appuser /app \
+    && chown -R appuser:appuser /root/.local \
+    && chown -R appuser:appuser /root/.cache
 
 WORKDIR /app
 COPY backend ./backend
