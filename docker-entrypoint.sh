@@ -3,6 +3,9 @@ set -e
 
 echo "Starting container..."
 
+# Debug: print sys.path
+python -c "import sys; print('Python path:', sys.path)"
+
 # Run database migrations before starting the app if DATABASE_URL is set
 if [ -n "${DATABASE_URL:-}" ]; then
   echo "Running database migrations..."
