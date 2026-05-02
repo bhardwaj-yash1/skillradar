@@ -4,7 +4,7 @@ from functools import lru_cache
 from typing import Literal
 from urllib.parse import urlparse
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -44,7 +44,29 @@ class Settings(BaseSettings):
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
 
     DATABASE_URL: str
-    SYNC_DATABASE_URL: str
+    SYNC_DATABASE_URL: str | None = None
+
+    @model_validator(mode="after")
+    def setup_database_urls(self) -> "Settings":
+        """Auto-configure database URLs for async and sync usage."""
+        # Fix legacy postgres:// prefix sometimes injected by cloud providers
+        if self.DATABASE_URL.startswith("postgres://"):
+            self.DATABASE_URL = self.DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+        # Ensure async driver is used for DATABASE_URL if it's postgres
+        if self.DATABASE_URL.startswith("postgresql://"):
+            self.DATABASE_URL = self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        # Derive SYNC_DATABASE_URL from DATABASE_URL
+        if not self.SYNC_DATABASE_URL or "localhost" in self.SYNC_DATABASE_URL:
+            if self.DATABASE_URL.startswith("postgresql+asyncpg://"):
+                self.SYNC_DATABASE_URL = self.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://", 1)
+            elif self.DATABASE_URL.startswith("sqlite+aiosqlite:///"):
+                self.SYNC_DATABASE_URL = self.DATABASE_URL.replace("sqlite+aiosqlite:///", "sqlite:///", 1)
+            else:
+                self.SYNC_DATABASE_URL = self.DATABASE_URL
+
+        return self
 
     SCRAPE_DELAY_MIN_SECONDS: float = 2.0
     SCRAPE_DELAY_MAX_SECONDS: float = 5.0

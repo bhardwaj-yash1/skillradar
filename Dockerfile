@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
     poppler-utils \
     libnss3 \
+    libasound2 \
     libatk-bridge2.0-0 \
     libgtk-3-0 \
     libx11-6 \
@@ -54,6 +55,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
     poppler-utils \
     libnss3 \
+    libasound2 \
     libatk-bridge2.0-0 \
     libgtk-3-0 \
     libx11-6 \
