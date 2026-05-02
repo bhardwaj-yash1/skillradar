@@ -6,7 +6,7 @@ echo "Starting container..."
 # Debug: print python version and sys.path
 python --version
 python -c "import sys; print('Python path:', sys.path)"
-python -c "try: import alembic; print('alembic ok') except ImportError as e: print('alembic not found:', e)"
+python -c 'try: import alembic; print("alembic ok") except ImportError as e: print("alembic not found:", e)'
 
 # Run database migrations before starting the app if DATABASE_URL is set
 if [ -n "${DATABASE_URL:-}" ]; then
