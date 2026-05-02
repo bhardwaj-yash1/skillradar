@@ -3,7 +3,8 @@ set -e
 
 echo "Starting container..."
 
-# Debug: print sys.path
+# Debug: print python version and sys.path
+python --version
 python -c "import sys; print('Python path:', sys.path)"
 
 # Run database migrations before starting the app if DATABASE_URL is set
