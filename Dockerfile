@@ -37,9 +37,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY requirements.txt .
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 RUN python -m pip install --upgrade pip
-RUN pip install --user --no-cache-dir -r requirements.txt
-RUN python -m playwright install chromium
+RUN pip install --no-cache-dir -r requirements.txt
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN playwright install chromium
+ENV HF_HOME=/opt/huggingface
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 FROM python:3.11-slim
@@ -76,9 +80,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /root/.local /root/.local
-COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
-ENV PATH=/root/.local/bin:$PATH
+COPY --from=builder /opt/venv /opt/venv
+COPY --from=builder /ms-playwright /ms-playwright
+COPY --from=builder /opt/huggingface /opt/huggingface
+ENV PATH="/opt/venv/bin:$PATH"
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV HF_HOME=/opt/huggingface
 
 RUN adduser --disabled-password --gecos "" appuser \
     && mkdir -p /app/data/uploads \
