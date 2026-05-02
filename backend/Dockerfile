@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 COPY requirements.txt .
 RUN python -m pip install --upgrade pip
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 RUN python -m playwright install chromium
 
 FROM python:3.11-slim
@@ -75,9 +75,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /root/.local /root/.local
 COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
-ENV PATH=/root/.local/bin:$PATH
 
 RUN adduser --disabled-password --gecos "" appuser \
     && mkdir -p /app/data/uploads \
