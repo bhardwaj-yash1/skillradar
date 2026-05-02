@@ -53,7 +53,7 @@ COPY .env.example .
 COPY docker-entrypoint.sh .
 RUN chmod +x /app/docker-entrypoint.sh && chown -R appuser:appuser /app
 
-USER appuser
+# USER appuser
 
 EXPOSE 8000
 HEALTHCHECK CMD curl -f http://localhost:8000/health || exit 1
