@@ -1,7 +1,8 @@
 """Application configuration."""
 
+import json
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 from pydantic import field_validator, model_validator
@@ -19,7 +20,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     API_V1_PREFIX: str = "/api/v1"
-    CORS_ORIGINS: list[str] = [
+    CORS_ORIGINS: Any = [
         "http://localhost:8501",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
@@ -43,7 +44,7 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o-mini"
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
 
-    DATABASE_URL: str
+    DATABASE_URL: str = "sqlite+aiosqlite:///./data/skillradar.db"
     SYNC_DATABASE_URL: str | None = None
 
     @model_validator(mode="after")
@@ -102,6 +103,22 @@ class Settings(BaseSettings):
     MAX_RESUME_SIZE_MB: int = 10
 
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: object) -> object:
+        """Accept JSON arrays or comma-separated strings from deployment env vars."""
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return []
+            if stripped.startswith("["):
+                try:
+                    return json.loads(stripped)
+                except json.JSONDecodeError as exc:
+                    raise ValueError("CORS_ORIGINS must be a JSON array or comma-separated list") from exc
+            return [origin.strip() for origin in stripped.split(",") if origin.strip()]
+        return value
 
     @field_validator("SCRAPE_DELAY_MAX_SECONDS")
     @classmethod

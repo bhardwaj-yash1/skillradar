@@ -178,6 +178,25 @@ Recommended public deployment split:
 - `web/` on Vercel
 - `backend/` on Render, Railway, or another container host
 
+## Railway backend deployment
+
+The repository root is configured for a Railway backend service using the root [Dockerfile](./Dockerfile) and [railway.json](./railway.json).
+
+Recommended Railway variables:
+
+```bash
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_groq_api_key_here
+CORS_ORIGINS=https://skillradar-rho.vercel.app,http://localhost:3000
+```
+
+Notes:
+- Railway injects `PORT` automatically; the container start script binds Uvicorn to that value.
+- `/health` is the Railway healthcheck endpoint.
+- If `DATABASE_URL` is missing, the backend falls back to local SQLite so the service can still boot, but a Railway Postgres database is recommended for persistent deployments.
+- The `web/` Next.js frontend should set `NEXT_PUBLIC_API_BASE_URL` to the deployed Railway backend URL.
+
 ## Useful endpoints
 
 - `POST /api/v1/scrape/trigger`

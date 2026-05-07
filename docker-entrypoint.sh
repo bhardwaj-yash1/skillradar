@@ -24,4 +24,13 @@ else
 fi
 
 echo "Starting application..."
+if [ "$1" = "uvicorn" ]; then
+  for arg in "$@"; do
+    if [ "$arg" = "--port" ]; then
+      exec "$@"
+    fi
+  done
+  exec "$@" --port "${PORT:-8000}"
+fi
+
 exec "$@"
