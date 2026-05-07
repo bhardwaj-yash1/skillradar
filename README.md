@@ -151,6 +151,16 @@ By default it expects:
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
 
+For a live Vercel deployment, set:
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=https://your-backend-service.up.railway.app
+```
+
+Notes:
+- The web frontend now refuses to silently fall back to `localhost` outside local development.
+- You can provide either the backend origin or the full `/api/v1` base; the frontend normalizes both.
+
 Then open:
 - `http://localhost:3000`
 
@@ -199,6 +209,25 @@ Notes:
 - The startup script now retries Alembic migrations automatically, which helps with first-boot database readiness on Railway.
 - If `DATABASE_URL` is missing entirely, the backend falls back to local SQLite so the service can still boot, but a Railway Postgres database is strongly recommended for persistent deployments.
 - The `web/` Next.js frontend should set `NEXT_PUBLIC_API_BASE_URL` to the deployed Railway backend URL.
+
+## Post-deploy checks
+
+Once Railway is live, verify:
+- `GET https://your-backend-service.up.railway.app/health`
+- `GET https://your-backend-service.up.railway.app/api/v1/health`
+- `GET https://your-backend-service.up.railway.app/docs`
+
+If you deploy `web/` to Vercel, set:
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=https://your-backend-service.up.railway.app
+```
+
+Then sanity-check:
+- the homepage loads
+- Market Dashboard loads role data
+- Resume Analyzer can fetch role benchmarks
+- uploaded or pasted-skill analysis completes successfully
 
 ## Useful endpoints
 

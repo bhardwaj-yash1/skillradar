@@ -1,8 +1,41 @@
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+const LOCAL_API_FALLBACK = "http://localhost:8000";
 const API_PREFIX = "/api/v1";
 
+function normalizeBaseUrl(value) {
+  const trimmed = (value || "").trim().replace(/\/$/, "");
+  if (!trimmed) {
+    return "";
+  }
+  if (trimmed.endsWith(API_PREFIX)) {
+    return trimmed.slice(0, -API_PREFIX.length);
+  }
+  return trimmed;
+}
+
+function resolveApiBaseUrl() {
+  const configuredBaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
+  if (configuredBaseUrl) {
+    return configuredBaseUrl;
+  }
+
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return LOCAL_API_FALLBACK;
+    }
+  }
+
+  return "";
+}
+
 function buildUrl(path, params) {
-  const url = new URL(`${API_BASE_URL}${API_PREFIX}${path}`);
+  const baseUrl = resolveApiBaseUrl();
+  if (!baseUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_API_BASE_URL is not configured. Set it to your live backend URL before using the web app.",
+    );
+  }
+  const url = new URL(`${baseUrl}${API_PREFIX}${path}`);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "") {
@@ -52,4 +85,4 @@ export async function postForm(path, formData) {
   return parseResponse(response);
 }
 
-export { API_BASE_URL };
+export const API_BASE_URL = resolveApiBaseUrl();
