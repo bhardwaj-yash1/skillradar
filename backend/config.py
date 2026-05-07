@@ -177,9 +177,12 @@ class Settings(BaseSettings):
 
     def _resolve_database_source_url(self) -> str:
         """Choose the best available source URL, preferring non-local cloud values."""
+        if self.DATABASE_URL and not _is_local_postgres_url(self.DATABASE_URL):
+            return self.DATABASE_URL
+
         cloud_candidates = [
-            self.DATABASE_PRIVATE_URL,
             self.DATABASE_PUBLIC_URL,
+            self.DATABASE_PRIVATE_URL,
             self.POSTGRES_URL,
             self._build_pg_url(),
         ]
@@ -187,9 +190,6 @@ class Settings(BaseSettings):
         for candidate in cloud_candidates:
             if candidate and not _is_local_postgres_url(candidate):
                 return candidate
-
-        if self.DATABASE_URL and not _is_local_postgres_url(self.DATABASE_URL):
-            return self.DATABASE_URL
 
         if self.DATABASE_URL:
             return self.DATABASE_URL

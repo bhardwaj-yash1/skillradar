@@ -59,3 +59,14 @@ def test_pg_variables_override_localhost_database_url(monkeypatch):
 
     assert settings.DATABASE_URL == "postgresql+asyncpg://railway:secret@db.railway.internal:5432/railway"
     assert settings.SYNC_DATABASE_URL == "postgresql://railway:secret@db.railway.internal:5432/railway"
+
+
+def test_explicit_database_url_wins_over_private_and_public_helpers(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@public-proxy.example.com:5432/skillradar")
+    monkeypatch.setenv("DATABASE_PRIVATE_URL", "postgresql://user:pass@postgres.railway.internal:5432/skillradar")
+    monkeypatch.setenv("DATABASE_PUBLIC_URL", "postgresql://user:pass@another-proxy.example.com:5432/skillradar")
+
+    settings = Settings(_env_file=None)
+
+    assert settings.DATABASE_URL == "postgresql+asyncpg://user:pass@public-proxy.example.com:5432/skillradar"
+    assert settings.SYNC_DATABASE_URL == "postgresql://user:pass@public-proxy.example.com:5432/skillradar"
