@@ -194,7 +194,9 @@ CORS_ORIGINS=https://skillradar-rho.vercel.app,http://localhost:3000
 Notes:
 - Railway injects `PORT` automatically; the container start script binds Uvicorn to that value.
 - `/health` is the Railway healthcheck endpoint.
-- If `DATABASE_URL` is missing, the backend falls back to local SQLite so the service can still boot, but a Railway Postgres database is recommended for persistent deployments.
+- Do **not** copy old localhost Postgres values into Railway. Leave `SYNC_DATABASE_URL` unset there; the app derives the sync migration URL from `DATABASE_URL`.
+- The startup script now retries Alembic migrations automatically, which helps with first-boot database readiness on Railway.
+- If `DATABASE_URL` is missing entirely, the backend falls back to local SQLite so the service can still boot, but a Railway Postgres database is strongly recommended for persistent deployments.
 - The `web/` Next.js frontend should set `NEXT_PUBLIC_API_BASE_URL` to the deployed Railway backend URL.
 
 ## Useful endpoints

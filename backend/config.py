@@ -1,12 +1,51 @@
 """Application configuration."""
 
+from __future__ import annotations
+
 import json
 from functools import lru_cache
 from typing import Any, Literal
-from urllib.parse import urlparse
+from urllib.parse import quote_plus, urlparse
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+LOCAL_DB_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def _normalize_postgres_prefix(url: str) -> str:
+    """Expand legacy postgres:// URLs to SQLAlchemy-friendly prefixes."""
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql://", 1)
+    return url
+
+
+def _to_async_database_url(url: str) -> str:
+    """Convert a DB URL to the async driver form used by the app."""
+    normalized = _normalize_postgres_prefix(url)
+    if normalized.startswith("postgresql://"):
+        return normalized.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if normalized.startswith("sqlite:///"):
+        return normalized.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
+    return normalized
+
+
+def _to_sync_database_url(url: str) -> str:
+    """Convert a DB URL to the sync driver form used by Alembic."""
+    normalized = _normalize_postgres_prefix(url)
+    if normalized.startswith("postgresql+asyncpg://"):
+        return normalized.replace("postgresql+asyncpg://", "postgresql://", 1)
+    if normalized.startswith("sqlite+aiosqlite:///"):
+        return normalized.replace("sqlite+aiosqlite:///", "sqlite:///", 1)
+    return normalized
+
+
+def _is_local_postgres_url(url: str | None) -> bool:
+    """Return whether the URL points at a localhost Postgres instance."""
+    if not url:
+        return False
+    parsed = urlparse(_normalize_postgres_prefix(url))
+    return parsed.hostname in LOCAL_DB_HOSTS
 
 
 class Settings(BaseSettings):
@@ -46,28 +85,14 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "sqlite+aiosqlite:///./data/skillradar.db"
     SYNC_DATABASE_URL: str | None = None
-
-    @model_validator(mode="after")
-    def setup_database_urls(self) -> "Settings":
-        """Auto-configure database URLs for async and sync usage."""
-        # Fix legacy postgres:// prefix sometimes injected by cloud providers
-        if self.DATABASE_URL.startswith("postgres://"):
-            self.DATABASE_URL = self.DATABASE_URL.replace("postgres://", "postgresql://", 1)
-
-        # Ensure async driver is used for DATABASE_URL if it's postgres
-        if self.DATABASE_URL.startswith("postgresql://"):
-            self.DATABASE_URL = self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
-
-        # Derive SYNC_DATABASE_URL from DATABASE_URL
-        if not self.SYNC_DATABASE_URL or "localhost" in self.SYNC_DATABASE_URL:
-            if self.DATABASE_URL.startswith("postgresql+asyncpg://"):
-                self.SYNC_DATABASE_URL = self.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://", 1)
-            elif self.DATABASE_URL.startswith("sqlite+aiosqlite:///"):
-                self.SYNC_DATABASE_URL = self.DATABASE_URL.replace("sqlite+aiosqlite:///", "sqlite:///", 1)
-            else:
-                self.SYNC_DATABASE_URL = self.DATABASE_URL
-
-        return self
+    DATABASE_PRIVATE_URL: str = ""
+    DATABASE_PUBLIC_URL: str = ""
+    POSTGRES_URL: str = ""
+    PGHOST: str = ""
+    PGPORT: str = "5432"
+    PGUSER: str = ""
+    PGPASSWORD: str = ""
+    PGDATABASE: str = ""
 
     SCRAPE_DELAY_MIN_SECONDS: float = 2.0
     SCRAPE_DELAY_MAX_SECONDS: float = 5.0
@@ -129,6 +154,59 @@ class Settings(BaseSettings):
             raise ValueError("SCRAPE_DELAY_MAX_SECONDS must be >= SCRAPE_DELAY_MIN_SECONDS")
         return value
 
+    @field_validator("OPENROUTER_HTTP_REFERER")
+    @classmethod
+    def validate_openrouter_referer(cls, value: str) -> str:
+        """Keep the OpenRouter referer header URL-shaped."""
+        parsed = urlparse(value)
+        if value and not (parsed.scheme and parsed.netloc):
+            raise ValueError("OPENROUTER_HTTP_REFERER must be an absolute URL")
+        return value
+
+    @model_validator(mode="after")
+    def setup_database_urls(self) -> "Settings":
+        """Auto-configure database URLs for async runtime and sync migrations."""
+        resolved_source_url = self._resolve_database_source_url()
+        self.DATABASE_URL = _to_async_database_url(resolved_source_url)
+
+        sync_source = self.SYNC_DATABASE_URL or resolved_source_url
+        if not sync_source or _is_local_postgres_url(sync_source):
+            sync_source = resolved_source_url
+        self.SYNC_DATABASE_URL = _to_sync_database_url(sync_source)
+        return self
+
+    def _resolve_database_source_url(self) -> str:
+        """Choose the best available source URL, preferring non-local cloud values."""
+        cloud_candidates = [
+            self.DATABASE_PRIVATE_URL,
+            self.DATABASE_PUBLIC_URL,
+            self.POSTGRES_URL,
+            self._build_pg_url(),
+        ]
+
+        for candidate in cloud_candidates:
+            if candidate and not _is_local_postgres_url(candidate):
+                return candidate
+
+        if self.DATABASE_URL and not _is_local_postgres_url(self.DATABASE_URL):
+            return self.DATABASE_URL
+
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+
+        return "sqlite+aiosqlite:///./data/skillradar.db"
+
+    def _build_pg_url(self) -> str:
+        """Build a URL from Railway-style PG* variables when present."""
+        if not all([self.PGHOST, self.PGUSER, self.PGPASSWORD, self.PGDATABASE]):
+            return ""
+        port = self.PGPORT or "5432"
+        return (
+            "postgresql://"
+            f"{quote_plus(self.PGUSER)}:{quote_plus(self.PGPASSWORD)}@"
+            f"{self.PGHOST}:{port}/{self.PGDATABASE}"
+        )
+
     @property
     def llm_api_key(self) -> str:
         """Return the API key for the active provider."""
@@ -178,15 +256,6 @@ class Settings(BaseSettings):
         if self.LLM_PROVIDER == "groq" and self.LLM_TEMPERATURE <= 0:
             return 1e-8
         return self.LLM_TEMPERATURE
-
-    @field_validator("OPENROUTER_HTTP_REFERER")
-    @classmethod
-    def validate_openrouter_referer(cls, value: str) -> str:
-        """Keep the OpenRouter referer header URL-shaped."""
-        parsed = urlparse(value)
-        if value and not (parsed.scheme and parsed.netloc):
-            raise ValueError("OPENROUTER_HTTP_REFERER must be an absolute URL")
-        return value
 
 
 @lru_cache
